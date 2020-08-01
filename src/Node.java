@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class Node {
 
-    int val;
+    private int val;
     public AtomicMarkableReference<Node> next;
 
 
@@ -16,17 +16,4 @@ public class Node {
     public int getVal() {
         return val;
     }
-
-//    public boolean setNext(Node succ) {
-//        boolean setSucceed = next.compareAndSet(expectedNext, succ, false, false);
-//        if (setSucceed) {
-//            expectedNext = succ;
-//        }
-//
-//        return setSucceed;
-//    }
-
-//    public boolean hasNext() {
-//        return next.get() != null;
-//    }
 }

@@ -8,6 +8,7 @@ public class Main {
         FIFOQueue queue = new FIFOQueue();
         int numOfThreads = 3;
         int items = 5;
+
         ArrayList<Thread> ths = new ArrayList<>(numOfThreads);
         int i;
         for(i = 0; i < numOfThreads; i++) {
@@ -34,12 +35,5 @@ public class Main {
             }
         }
         ths.forEach(Thread::start);
-//        queue.enqueue(1);
-//        queue.enqueue(2);
-//        queue.enqueue(4);
-//        System.out.println(queue.dequeue());
-//        System.out.println(queue.dequeue());
-//        System.out.println(queue.dequeue());
-//        System.out.println(queue.dequeue());
     }
 }
