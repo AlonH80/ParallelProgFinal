@@ -1,9 +1,10 @@
+
 import java.util.concurrent.atomic.AtomicMarkableReference;
-import java.util.concurrent.atomic.AtomicReference;
+
 
 public class FIFOQueue {
 
-    public AtomicMarkableReference<Node> head;
+    private AtomicMarkableReference<Node> head;
     private AtomicMarkableReference<Node> tail;
 
     public FIFOQueue() {
@@ -16,56 +17,61 @@ public class FIFOQueue {
         Node newNode = new Node(value);
         boolean enqueued = false;
         while(!enqueued) {
-            Node tailNode = tail.getReference();
-            enqueued = tailNode.next.compareAndSet(null, newNode, false, false);
-            if (enqueued) {
-                // Only 1 thread at a time can reach this line
-                tail.compareAndSet(tailNode, newNode, false, false);
-            }
+            advanceTail();
+            enqueued = tail.getReference().next.compareAndSet(null, newNode, false, false);
         }
     }
 
-    public int dequeue() {
-        // TODO: try until dequeue succeed
-        // Raise question: what to do when queue is empty on dequeue?
-        int val = head.getReference().getVal();
+    public int dequeue() throws EmptyQueueException {
+        if (isEmpty()) {
+            advanceTail();
+            if (isEmpty()) {
+                throw new EmptyQueueException("Queue is empty");
+            }
+        }
+        int val = -1; // = head.getReference().getVal();
         boolean dequeuedSucceed = false;
+
         while (!dequeuedSucceed ) {
-            Node nd = find();
-            if (nd != null) {
-                boolean logicRemove = head.getReference().next.compareAndSet(nd, nd, false, true);
-                if (logicRemove) {
-                    val = nd.getVal();
-                    dequeuedSucceed = true;
-                }
+            AtomicMarkableReference<Node> nodeRef = find();
+            Node nd = nodeRef.getReference();
+            if (nd == null) {
+                throw new EmptyQueueException("Queue is empty");
+            }
+            boolean logicRemove = nodeRef.compareAndSet(nd, nd, false, true);
+            if (logicRemove) {
+                val = nd.getVal();
+                dequeuedSucceed = true;
             }
         }
         return val;
     }
 
     public boolean isEmpty() {
-        boolean emptyList = head.getReference().equals(tail.getReference());
-        return emptyList;
+        return head.getReference().equals(tail.getReference());
     }
 
-    public Node find() {
-        AtomicMarkableReference<Node> ndRef = head.getReference().next;
-        while (ndRef.getReference()!=null && ndRef.isMarked()) {
-            head.getReference().next.compareAndSet(ndRef.getReference(), ndRef.getReference().next.getReference(), true, true);
-            if (head.getReference().next.getReference().next.getReference() != null) {
-                ndRef = head.getReference().next;
-            }
-            else {
-                break;
-            }
-        }
-        if (ndRef.isMarked()) { // If we reached tail, we'll stop the loop, but the tail may also be marked
-            head.getReference().next.compareAndSet(ndRef.getReference(), ndRef.getReference().next.getReference(), true, true);
-            tail.compareAndSet(ndRef.getReference(), head.getReference(), true, false);
-            ndRef = head.getReference().next;
+    public AtomicMarkableReference<Node> find() {
+        AtomicMarkableReference<Node> prevNodeRef = head;
+        AtomicMarkableReference<Node> nodeRef = head.getReference().next;
+        while (nodeRef.getReference() !=null && nodeRef.isMarked()) {
+            // Assist in remove marked nodes
+            prevNodeRef = nodeRef;
+            nodeRef = nodeRef.getReference().next;
+            head.getReference().next.compareAndSet(prevNodeRef.getReference(), nodeRef.getReference(), true, true);
         }
 
-        return ndRef.getReference();
+        return nodeRef;
     }
 
+    private void advanceTail() {
+        Node tailNode = tail.getReference();
+        Node tailNext = tailNode.next.getReference();
+        while (tailNext != null) {
+            // Assist in moving tail ref forward
+            tail.compareAndSet(tailNode, tailNext, false, false);
+            tailNode = tailNext;
+            tailNext = tailNode.next.getReference();
+        }
+    }
 }
